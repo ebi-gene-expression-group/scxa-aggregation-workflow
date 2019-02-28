@@ -1,12 +1,10 @@
 #!/usr/bin/env nextflow
 
-gtf = params.reference.gtf
 resultsRoot = params.resultsRoot
-
 expressionLevel = params.level
 expressionScaling = params.scaling
 
-REFERENCE_GTF = Channel.fromPath(gtf, checkIfExists: true)
+REFERENCE_GTF = Channel.fromPath(params.referenceGtf, checkIfExists: true)
 
 // Make a transcript-to-gene mapping from the GTF file
 
