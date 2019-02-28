@@ -1,0 +1,4 @@
+name: bioconductor-rtracklayer
+dependencies:
+  - bioconductor-genomeinfodbdata=1.1
+  - bioconductor-rtracklayer 

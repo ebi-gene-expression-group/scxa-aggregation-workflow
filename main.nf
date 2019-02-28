@@ -10,7 +10,7 @@ REFERENCE_GTF = Channel.fromPath("${resultsRoot}/${params.referenceGtf}", checkI
 
 process transcript_to_gene {
 
-    conda 'bioconductor-rtracklayer'
+    conda "${baseDir}/envs/bioconductor-rtracklayer.yml"
     
     memory { 5.GB * task.attempt }
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
