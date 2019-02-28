@@ -21,7 +21,7 @@ process transcript_to_gene {
         file tx2gene into TRANSCRIPT_TO_GENE
 
     """
-        $SCRIPTS_DIR/transcriptToGene.R ${gtf} transcript_id gene_id tx2gene
+        transcriptToGene.R ${gtf} transcript_id gene_id tx2gene
     """
 }
 
