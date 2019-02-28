@@ -4,7 +4,7 @@ resultsRoot = params.resultsRoot
 expressionLevel = params.level
 expressionScaling = params.scaling
 
-REFERENCE_GTF = Channel.fromPath(params.referenceGtf, checkIfExists: true)
+REFERENCE_GTF = Channel.fromPath("${resultsRoot}/${params.referenceGtf}, checkIfExists: true)
 
 // Make a transcript-to-gene mapping from the GTF file
 
