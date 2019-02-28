@@ -1,13 +1,12 @@
 #!/usr/bin/env nextflow
 
+gtf = params.reference.gtf
 resultsRoot = params.resultsRoot
-quantDir = params.quantDir
+
 expressionLevel = params.level
 expressionScaling = params.scaling
-gtf = params.reference.gtf
 
 REFERENCE_GTF = Channel.fromPath(gtf, checkIfExists: true)
-KALLISTO_OUTPUTS = Channel.fromPath("$kallistoDir/kallisto/*", type: 'dir', checkIfExists: true)
 
 // Make a transcript-to-gene mapping from the GTF file
 
@@ -38,10 +37,9 @@ process kallisto_gene_count_matrix {
     errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
     maxRetries 20
 
-    publishDir "$resultsRoot/matrices", mode: 'copy', overwrite: true
+    publishDir "$resultsRoot/matrices", mode: 'move', overwrite: true
     
     input:
-        file '*' from KALLISTO_OUTPUTS.collect()
         file tx2Gene from TRANSCRIPT_TO_GENE
 
     output:
@@ -59,7 +57,7 @@ process kallisto_gene_count_matrix {
         }
 
         """
-        find -L . -name abundance.h5 > kallisto_results.txt
+        find -L ${resultsRoot} -name abundance.h5 > kallisto_results.txt
         tximport.R --files=kallisto_results.txt --type=kallisto --tx2gene=$tx2Gene \
             --countsFromAbundance=$expressionScaling --ignoreTxVersion=TRUE --txOut=$txOut \
             --outputCountsFile=${expressionLevel}_${expressionScaling}_counts/matrix.mtx \
