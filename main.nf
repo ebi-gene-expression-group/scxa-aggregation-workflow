@@ -12,6 +12,8 @@ process transcript_to_gene {
 
     conda "${baseDir}/envs/bioconductor-rtracklayer.yml"
     
+    cache 'lenient'
+
     memory { 5.GB * task.attempt }
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
     
