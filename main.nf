@@ -32,7 +32,7 @@ process kallisto_gene_count_matrix {
     conda "${baseDir}/envs/kallisto_matrix.yml"
 
     memory { 5.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
 
     publishDir "$resultsRoot/matrices", mode: 'move', overwrite: true
