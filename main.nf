@@ -1,6 +1,7 @@
 #!/usr/bin/env nextflow
 
 resultsRoot = params.resultsRoot
+quantDir = params.quantDir
 expressionLevel = params.level
 expressionScaling = params.scaling
 referenceGtf = params.referenceGtf
@@ -31,7 +32,7 @@ process transcript_to_gene {
 // Load Kallisto outputs into a channel, split in to chunks of the size
 // specified in the parameters
 
-Channel.fromPath( "${resultsRoot}/*/abundance.h5" )
+Channel.fromPath( "${quantDir}/*/abundance.h5" )
     .map { "${it}" }
     .collectFile(sort: true, name: 'kallisto_results.txt', storeDir: params.resultsRoot, newLine: true)
     .splitText( by: params.chunkSize )
