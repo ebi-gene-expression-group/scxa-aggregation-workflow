@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 suppressPackageStartupMessages(library(DropletUtils))
 
 cl <- commandArgs(trailingOnly = TRUE)
