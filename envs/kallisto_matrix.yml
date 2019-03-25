@@ -1,7 +1,6 @@
 name: kallisto_matrix
 dependencies:
   - bioconductor-genomeinfodbdata
-  - openssl=1.0
   - bioconductor-tximport
   - r-optparse
   - r-readr
