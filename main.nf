@@ -90,7 +90,7 @@ process merge_count_matrices {
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
     
-    storeDir "$resultsRoot/matrices", mode: 'move', overwrite: true
+    storeDir "$resultsRoot/matrices"
     
     input:
         file('dir??/*') from KALLISTO_CHUNK_COUNT_MATRICES.collect()
@@ -114,7 +114,7 @@ process merge_tpm_matrices {
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
     
-    storeDir "$resultsRoot/matrices", mode: 'move', overwrite: true
+    storeDir "$resultsRoot/matrices"
     
     input:
         file('dir??/*') from KALLISTO_CHUNK_ABUNDANCE_MATRICES.collect()
