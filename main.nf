@@ -34,7 +34,7 @@ process transcript_to_gene {
 
 Channel.fromPath( "${quantDir}/*/abundance.h5" )
     .map { "${it}" }
-    .collectFile(sort: true, name: 'kallisto_results.txt', storeDir: params.resultsRoot, newLine: true)
+    .collectFile(sort: true, name: 'kallisto_results.txt', newLine: true)
     .splitText( by: params.chunkSize )
     .set{
         KALLISTO_CHUNKS
@@ -91,7 +91,7 @@ process merge_count_matrices {
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
     
-    storeDir "$resultsRoot/matrices"
+    publishDir "$resultsRoot/matrices", mode: 'copy', overwrite: true
     
     input:
         file('dir??/*') from KALLISTO_CHUNK_COUNT_MATRICES.collect()
@@ -115,7 +115,7 @@ process merge_tpm_matrices {
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
     
-    storeDir "$resultsRoot/matrices"
+    publishDir "$resultsRoot/matrices", mode: 'copy', overwrite: true
     
     input:
         file('dir??/*') from KALLISTO_CHUNK_ABUNDANCE_MATRICES.collect()
