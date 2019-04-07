@@ -28,9 +28,7 @@ if (length(dirs) > 1){
 
         dir <- dirs[i]
         nextmat <- read10xCounts(dir)
-        rowintersect <- intersect(rownames(mat), rownames(nextmat))
-
-        mat <- cbind(mat[rowintersect,], nextmat[rowintersect,])
+        mat <- cbind(mat, nextmat)
     }
 }
 
