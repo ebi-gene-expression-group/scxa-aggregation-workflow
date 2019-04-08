@@ -93,7 +93,7 @@ process chunk_kallisto {
 
     """
         mkdir -p chunks
-        split -l ${params.chunksize} kallisto_results.txt $subExp/chunks/
+        split -l ${params.chunkSize} kallisto_results.txt $subExp/chunks/
     """
 
 }
