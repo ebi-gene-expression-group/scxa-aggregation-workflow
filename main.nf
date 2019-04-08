@@ -184,7 +184,7 @@ process kallisto_gene_count_matrix {
     output:
         set val(protocol), file("counts_mtx") into KALLISTO_CHUNK_COUNT_MATRICES
         set val(protocol), file("tpm_mtx") into KALLISTO_CHUNK_ABUNDANCE_MATRICES
-        set val(protocol), file("stats.tsv") into KALLISTO_CHUNK_STATS
+        set file("${protcol}.kallisto_stats.tsv") into KALLISTO_CHUNK_STATS
 
     script:
 
@@ -312,6 +312,6 @@ process merge_tpm_chunk_matrices {
     """
 }
 
-//KALLISTO_CHUNK_STATS
-//    .collectFile( sort: true, name: "stats.tsv", storeDir: "${resultsRoot}/matrices", keepHeader: true )
+KALLISTO_CHUNK_STATS
+    .collectFile( sort: true, name: "kallisto_stats.tsv", storeDir: "${resultsRoot}/matrices", keepHeader: true )
 
