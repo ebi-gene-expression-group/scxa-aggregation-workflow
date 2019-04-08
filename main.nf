@@ -184,7 +184,7 @@ process kallisto_gene_count_matrix {
     output:
         set val(protocol), file("counts_mtx") into KALLISTO_CHUNK_COUNT_MATRICES
         set val(protocol), file("tpm_mtx") into KALLISTO_CHUNK_ABUNDANCE_MATRICES
-        file("${protcol}.kallisto_stats.tsv") into KALLISTO_CHUNK_STATS
+        file("kallisto_stats.tsv") into KALLISTO_CHUNK_STATS
 
     script:
 
@@ -200,7 +200,7 @@ process kallisto_gene_count_matrix {
             --countsFromAbundance=$expressionScaling --ignoreTxVersion=TRUE --txOut=$txOut \
             --outputCountsFile=counts_mtx/matrix.mtx \
             --outputAbundancesFile=tpm_mtx/matrix.mtx \
-            --outputStatsFile=stats.tsv
+            --outputStatsFile=kallisto_stats.tsv
         """
 }
 
