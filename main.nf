@@ -33,10 +33,10 @@ process gather_results {
 
         if [ -e $quantDir/kallisto ]; then
             echo kallisto > quantType
-            cp -p $quantDir/kallisto quantResults
+            cp -rp $quantDir/kallisto quantResults
         elif [ -e $quantDir/alevin ]; then
             echo alevin > quantType
-            cp -p $quantDir/alevin quantResults
+            cp -rp $quantDir/alevin quantResults
         else
             echo "cannot determine quantificaiton type from \$(pwd)" 1>&2
             exit 1
