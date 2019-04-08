@@ -20,6 +20,8 @@ Channel
 
 process gather_results {
     
+    executor 'local'
+    
     input:
         file(quantDir) from QUANT_DIRS
 
@@ -147,6 +149,8 @@ KALLISTO_CHUNKS
 
 process associate_kallisto_chunks {
 
+    executor 'local'
+    
     input:
         file(kallistoChunk) from FLATTENED_KALLISTO_CHUNKS
 
