@@ -55,7 +55,7 @@ ALL_RESULTS
 ALEVIN_RESULTS = Channel.create()
 KALLISTO_RESULTS = Channel.create()
 
-ALL_RESULTS.choice( KALLISTO_RESULTS, ALEVIN_RESULTS ) {a -> 
+ALL_RESULTS_VALS.choice( KALLISTO_RESULTS, ALEVIN_RESULTS ) {a -> 
     a[2] == 'kallisto' ? 1 : 0
 }
     
