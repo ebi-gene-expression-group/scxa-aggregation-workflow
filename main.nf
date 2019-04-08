@@ -118,7 +118,7 @@ process associate_kallisto_chunks {
         mkdir -p out
         cp -p kallistoChunk out
         
-        readlink \$kallistoChunk | awk -F'/' '{print $(NF-2)}' 
+        readlink \$kallistoChunk | awk -F'/' '{print \$(NF-2)}' 
     """
 }
 
