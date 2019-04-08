@@ -85,7 +85,7 @@ process chunk_kallisto {
     executor 'local'
 
     input:
-        val(subExp), file("kallisto_results.txt") from KALLISTO_RESULT_SETS
+        set val(subExp), file("kallisto_results.txt") from KALLISTO_RESULT_SETS
 
     output: 
         set file("$subExp/chunks/*") into KALLISTO_CHUNKS
