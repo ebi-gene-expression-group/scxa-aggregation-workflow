@@ -88,7 +88,7 @@ process chunk_kallisto {
         set val(subExp), file("kallisto_results.txt") from KALLISTO_RESULT_SETS
 
     output: 
-        set file("$subExp/chunks/*") into KALLISTO_CHUNKS
+        file("$subExp/chunks/*") into KALLISTO_CHUNKS
 
     """
         mkdir -p chunks
@@ -169,7 +169,7 @@ process alevin_to_mtx {
     conda "${baseDir}/envs/parse_alevin.yml"
 
     input:
-        set file('alevin') from ALEVIN_RESULTS
+        file('alevin') from ALEVIN_RESULTS
 
     output:
         set stdout, file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
@@ -209,7 +209,7 @@ process merge_count_chunk_matrices {
         set val(subExp), file('dir??/*') from PROTOCOL_COUNT_CHUNKS
 
     output:
-        set file("counts_mtx_${subExp}") into PROTOCOL_COUNT_MATRICES
+        file("counts_mtx_${subExp}") into PROTOCOL_COUNT_MATRICES
 
     """
         find . -name 'counts_mtx' > dirs.txt
@@ -233,10 +233,10 @@ process merge_protocol_count_matrices {
     publishDir "$resultsRoot/matrices", mode: 'copy', overwrite: true
     
     input:
-        set file('*') from PROTOCOL_COUNT_MATRICES.collect()
+        file('*') from PROTOCOL_COUNT_MATRICES.collect()
 
     output:
-        set file("counts_mtx.zip") into EXP_COUNT_MATRICES
+        file("counts_mtx.zip") into EXP_COUNT_MATRICES
 
     """
         find . -name 'counts_mtx_*' > dirs.txt
