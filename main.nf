@@ -8,11 +8,11 @@ expressionScaling = params.scaling
 // Find results from all the quantification subdirectories
 
 Channel
-    .fromPath("$quantDir/*/*.gtf.gz", checkIfExists: true)
+    .fromPath("$quantDir/*/*.gtf.gz", checkIfExists: true, followLinks: false )
     .set { REFERENCE_GTFS }
 
 Channel
-    .fromPath("$quantDir/*/kallisto", type: 'dir' )
+    .fromPath("$quantDir/*/kallisto", type: 'dir', followLinks: false )
     .set { KALLISTO_RESULTS }
 
 Channel
@@ -92,7 +92,7 @@ process chunk_kallisto {
         file("$subExp/chunks/*") into KALLISTO_CHUNKS
 
     """
-        mkdir -p chunks
+        mkdir -p $subExp/chunks
         split -l ${params.chunkSize} kallisto_results.txt $subExp/chunks/
     """
 
