@@ -312,6 +312,6 @@ process merge_tpm_chunk_matrices {
     """
 }
 
-KALLISTO_CHUNK_STATS
-    .collectFile( sort: true, name: "stats.tsv", storeDir: "${resultsRoot}/matrices", keepHeader: true )
+//KALLISTO_CHUNK_STATS
+//    .collectFile( sort: true, name: "stats.tsv", storeDir: "${resultsRoot}/matrices", keepHeader: true )
 
