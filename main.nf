@@ -108,7 +108,7 @@ KALLISTO_CHUNKS
 
 process associate_kallisto_chunks {
 
-    input;
+    input:
         file(kallistoChunk) from FLATTENED_KALLISTO_CHUNKS
 
     output:
