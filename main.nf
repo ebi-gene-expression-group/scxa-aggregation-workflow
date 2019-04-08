@@ -155,7 +155,7 @@ process associate_kallisto_chunks {
         file(kallistoChunk) from FLATTENED_KALLISTO_CHUNKS
 
     output:
-        set stdout, file('out/kallisto_chunk') into READY_KALLISTO_CHUNKS 
+        set stdout, file("out/$kallistoChunk") into READY_KALLISTO_CHUNKS 
 
     """
         mkdir -p out
