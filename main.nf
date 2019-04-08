@@ -52,7 +52,8 @@ process merge_transcript_to_gene {
         file tx2gene into TRANSCRIPT_TO_GENE
 
     """
-    cat */tx2gene | sort | uniq > tx2gene
+    cat $(ls */tx2gene | head -n 1) | head -n 1 > tx2gene
+    tail -q -n +2 */tx2gene | sort | uniq >> tx2gene
     """    
 }
 
