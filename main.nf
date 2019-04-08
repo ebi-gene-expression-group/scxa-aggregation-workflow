@@ -161,8 +161,8 @@ process kallisto_gene_count_matrix {
         """
 }
 
-# Convert Alevin output to MTX. There will be one of these for every run, or
-# technical replicate group of runs
+// Convert Alevin output to MTX. There will be one of these for every run, or
+// technical replicate group of runs
 
 process alevin_to_mtx {
 
