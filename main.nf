@@ -246,7 +246,7 @@ process merge_protocol_count_matrices {
     """
 }
 
-process merge_tpm_matrices {
+process merge_tpm_chunk_matrices {
 
     conda "${baseDir}/envs/kallisto_matrix.yml"
     
@@ -257,7 +257,7 @@ process merge_tpm_matrices {
     publishDir "$resultsRoot/matrices", mode: 'copy', overwrite: true
     
     input:
-        set val(subExp), file('dir??/*') from SUBEXP_KALLISTO_ABUNDANCE_CHUNKS
+        set val(subExp), file('dir??/*') from PROTOCOL_KALLISTO_ABUNDANCE_CHUNKS
 
     output:
         set val(subExp), file("tpm_mtx.zip")
