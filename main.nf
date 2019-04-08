@@ -208,7 +208,7 @@ process alevin_to_mtx {
     conda "${baseDir}/envs/parse_alevin.yml"
 
     input:
-        set val(protocol), val(quantType), file('alevin') from KALLISTO_RESULTS
+        set val(protocol), val(quantType), file('alevin') from ALEVIN_RESULTS
 
     output:
         set val(protocol), file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
