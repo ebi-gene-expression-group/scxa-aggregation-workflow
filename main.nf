@@ -48,7 +48,7 @@ process gather_results {
 // Convert file outputs to strings
 
 ALL_RESULTS
-    .map{ row-> tuple( row[0].text, row[1].text, row[3]) }        
+    .map{ row-> tuple( row[0].text, row[1].text, row[2]) }        
     .set{ ALL_RESULTS_VALS }
 
 
