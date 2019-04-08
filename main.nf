@@ -36,7 +36,7 @@ process gather_results {
             echo alevin > quantType
             cp -p alevin quantResults
         else
-            echo "cannot determine quantificaiton type from $(pwd)" 1>&2
+            echo "cannot determine quantificaiton type from \$(pwd)" 1>&2
             exit 1
         fi
     """
