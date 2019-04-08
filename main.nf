@@ -12,11 +12,11 @@ Channel
     .set { REFERENCE_GTFS }
 
 Channel
-    .fromPath("$quantDir/*/kallisto")
+    .fromPath("$quantDir/*/kallisto", type: 'dir' )
     .set { KALLISTO_RESULTS }
 
 Channel
-    .fromPath("$quantDir/*/alevin")
+    .fromPath("$quantDir/*/alevin", type: 'dir' )
     .set { ALEVIN_RESULTS }
     
 // Make a transcript-to-gene mapping from the GTF file
