@@ -8,7 +8,7 @@ expressionScaling = params.scaling
 // Find results from all the quantification subdirectories
 
 Channel
-    .fromPath("$quantDir/*/*.gtf.gz", checkIfExists: true, followLinks: false )
+    .fromPath("$quantDir/*/*.gtf.gz", checkIfExists: true )
     .set { REFERENCE_GTFS }
 
 Channel
@@ -16,7 +16,7 @@ Channel
     .set { KALLISTO_RESULTS }
 
 Channel
-    .fromPath("$quantDir/*/alevin", type: 'dir' )
+    .fromPath("$quantDir/*/alevin", type: 'dir', followLinks: false )
     .set { ALEVIN_RESULTS }
     
 // Make a transcript-to-gene mapping from the GTF file
