@@ -66,7 +66,7 @@ process find_kallisto_results {
         file('kallisto') from KALLISTO_RESULTS
 
     output:
-        stdout, file("kallisto_results.txt") into KALLISTO_RESULT_SETS
+        set stdout, file("kallisto_results.txt") into KALLISTO_RESULT_SETS
 
     """
         dir=\$(readlink kallisto)
