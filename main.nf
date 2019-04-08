@@ -75,7 +75,7 @@ process find_kallisto_results {
             echo \${dir}/\$l >> kallisto_results.txt
         done
 
-        basename \$(dirname \$dir)
+        basename \$(dirname \$dir) | tr -d \'\\n\'
     """
 }
 
@@ -178,7 +178,7 @@ process alevin_to_mtx {
     """
     dir=\$(readlink alevin)
     alevinToMtx.py alevin counts_mtx
-    basename \$(dirname \$dir)
+    basename \$(dirname \$dir) | tr -d \'\\n\'
     """ 
 } 
 
