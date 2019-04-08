@@ -8,16 +8,56 @@ expressionScaling = params.scaling
 // Find results from all the quantification subdirectories
 
 Channel
+    .fromPath("$quantDir/*", type: 'dir')
+    .set { QUANT_DIRS }
+
+Channel
     .fromPath("$quantDir/*/*.gtf.gz", checkIfExists: true )
     .set { REFERENCE_GTFS }
 
-Channel
-    .fromPath("$quantDir/*/kallisto", type: 'file', followLinks: false )
-    .set { KALLISTO_RESULTS }
+// Look at the results dirs and work out what quantification methods and
+// protocols have been used
 
-Channel
-    .fromPath("$quantDir/*/alevin", type: 'file', followLinks: false )
-    .set { ALEVIN_RESULTS }
+process gather_results {
+    
+    input:
+        file(quantDir) from QUANT_DIRS
+
+    output:
+        set file('protocol'), file('quantType'), file('quantResults') into ALL_RESULTS
+
+    """
+        cp -p $quantDir/protocol protocol
+
+        if [ -e $quantDir/kallisto ]; then
+            echo kallisto > quantType
+            cp -p kallisto quantResults
+        elif [ -e $quantDir/alevin ]; then
+            echo alevin > quantType
+            cp -p alevin quantResults
+        else
+            echo "cannot determine quantificaiton type from $(pwd)" 1>&2
+            exit 1
+        fi
+    """
+
+}
+
+// Convert file outputs to strings
+
+ALL_RESULTS
+    .map{ row-> tuple( row[0].text, row[1].text, row[3]) }        
+    .set{ ALL_RESULTS_VALS }
+
+
+// Move Kallisto and Alevin results to different channels
+
+ALEVIN_RESULTS = Channel.create()
+KALLISTO_RESULTS = Channel.create()
+
+ALL_RESULTS.choice( KALLISTO_RESULTS, ALEVIN_RESULTS ) {a -> 
+    a[2] == 'kallisto' ? 1 : 0
+}
     
 // Make a transcript-to-gene mapping from the GTF file
 
@@ -64,18 +104,16 @@ process find_kallisto_results {
     executor 'local'
     
     input:
-        file('kallisto') from KALLISTO_RESULTS
+        set val(protocol), val(quantType), file('kallisto') from KALLISTO_RESULTS
 
     output:
-        set stdout, file("kallisto_results.txt") into KALLISTO_RESULT_SETS
+        set val(protocol), file("kallisto_results.txt") into KALLISTO_RESULT_SETS
 
     """
         dir=\$(readlink kallisto)
         ls kallisto/*/abundance.h5 | while read -r l; do
             echo \${dir}/\$l >> kallisto_results.txt
         done
-
-        basename \$(dirname \$dir) | tr -d \'\\n\'
     """
 }
 
@@ -86,14 +124,14 @@ process chunk_kallisto {
     executor 'local'
 
     input:
-        set val(subExp), file("kallisto_results.txt") from KALLISTO_RESULT_SETS
+        set val(protocol), file(kallistoResults) from KALLISTO_RESULT_SETS
 
     output: 
-        file("$subExp/chunks/*") into KALLISTO_CHUNKS
+        file("$protocol/chunks/*") into KALLISTO_CHUNKS
 
     """
-        mkdir -p $subExp/chunks
-        split -l ${params.chunkSize} kallisto_results.txt $subExp/chunks/
+        mkdir -p $protocol/chunks
+        split -l ${params.chunkSize} ${kallistoResults} $protocol/chunks/
     """
 
 }
@@ -105,7 +143,7 @@ KALLISTO_CHUNKS
     .flatten()
     .set { FLATTENED_KALLISTO_CHUNKS }
 
-// Re-associate the chunks with their sub-experiments of origin
+// Re-associate the chunks with their protocols of origin
 
 process associate_kallisto_chunks {
 
@@ -113,7 +151,7 @@ process associate_kallisto_chunks {
         file(kallistoChunk) from FLATTENED_KALLISTO_CHUNKS
 
     output:
-        set val(subExp), file('out/kallisto_chunk') into READY_KALLISTO_CHUNKS 
+        set stdout, file('out/kallisto_chunk') into READY_KALLISTO_CHUNKS 
 
     """
         mkdir -p out
@@ -137,12 +175,12 @@ process kallisto_gene_count_matrix {
 
     input:
         file tx2Gene from TRANSCRIPT_TO_GENE.first()
-        set val(subExp), file(kallistoChunk) from READY_KALLISTO_CHUNKS        
+        set val(protocol), file(kallistoChunk) from READY_KALLISTO_CHUNKS        
 
     output:
-        set val(subExp), file("counts_mtx") into KALLISTO_CHUNK_COUNT_MATRICES
-        set val(subExp), file("tpm_mtx") into KALLISTO_CHUNK_ABUNDANCE_MATRICES
-        set val(subExp), file("stats.tsv") into KALLISTO_CHUNK_STATS
+        set val(protocol), file("counts_mtx") into KALLISTO_CHUNK_COUNT_MATRICES
+        set val(protocol), file("tpm_mtx") into KALLISTO_CHUNK_ABUNDANCE_MATRICES
+        set val(protocol), file("stats.tsv") into KALLISTO_CHUNK_STATS
 
     script:
 
@@ -170,19 +208,18 @@ process alevin_to_mtx {
     conda "${baseDir}/envs/parse_alevin.yml"
 
     input:
-        file('alevin') from ALEVIN_RESULTS
+        set val(protocol), val(quantType), file('alevin') from KALLISTO_RESULTS
 
     output:
-        set stdout, file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
+        set val(protocol), file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
 
     """
     dir=\$(readlink alevin)
     alevinToMtx.py alevin counts_mtx
-    basename \$(dirname \$dir) | tr -d \'\\n\'
     """ 
 } 
 
-// Merge the chunks for each sub-experiment into one matrix. For Kallisto
+// Merge the chunks for each protocol into one matrix. For Kallisto
 // results this will be sub-matrices generated due the costs of running
 // tximport on 10s of 1000s of runs. For Alevin this will be the matrices
 // generated for each library
@@ -207,14 +244,14 @@ process merge_count_chunk_matrices {
     maxRetries 20
     
     input:
-        set val(subExp), file('dir??/*') from PROTOCOL_COUNT_CHUNKS
+        set val(protocol), file('dir??/*') from PROTOCOL_COUNT_CHUNKS
 
     output:
-        file("counts_mtx_${subExp}") into PROTOCOL_COUNT_MATRICES
+        file("counts_mtx_${protocol}") into PROTOCOL_COUNT_MATRICES
 
     """
         find . -name 'counts_mtx' > dirs.txt
-        mergeMtx.R dirs.txt counts_mtx_${subExp}
+        mergeMtx.R dirs.txt counts_mtx_${protocol}
         rm -f dirs.txt
     """
 }
@@ -258,10 +295,10 @@ process merge_tpm_chunk_matrices {
     publishDir "$resultsRoot/matrices", mode: 'copy', overwrite: true
     
     input:
-        set val(subExp), file('dir??/*') from PROTOCOL_KALLISTO_ABUNDANCE_CHUNKS
+        set val(protocol), file('dir??/*') from PROTOCOL_KALLISTO_ABUNDANCE_CHUNKS
 
     output:
-        set val(subExp), file("tpm_mtx.zip")
+        set val(protocol), file("tpm_mtx.zip")
 
     """
         find . -name 'tpm_mtx' > dirs.txt
