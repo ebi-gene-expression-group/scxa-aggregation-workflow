@@ -38,7 +38,7 @@ process gather_results {
             echo alevin > quantType
             cp -rp $quantDir/alevin quantResults
         else
-            echo "cannot determine quantificaiton type from \$(pwd)" 1>&2
+            echo "cannot determine quantification type from \$(pwd)" 1>&2
             exit 1
         fi
     """
@@ -101,7 +101,7 @@ process merge_transcript_to_gene {
 
 // Generate the sets of files for each Kallisto sub-directory
 
-process find_kallisto_results {
+process filter_kallisto_results {
     
     executor 'local'
     
@@ -109,13 +109,11 @@ process find_kallisto_results {
         set val(protocol), val(quantType), file('kallisto') from KALLISTO_RESULTS
 
     output:
-        set val(protocol), file("kallisto_results.txt") into KALLISTO_RESULT_SETS
+        set val(protocol), file("kallisto_results_filtered.txt") into KALLISTO_RESULT_FILTERED
 
     """
         dir=\$(readlink kallisto)
-        ls kallisto/*/abundance.h5 | while read -r l; do
-            echo \$(dirname \${dir})/\$l >> kallisto_results.txt
-        done
+        python ${workflow.projectDir}/filter_p_alignment.py \${dir}
     """
 }
 
@@ -126,7 +124,7 @@ process chunk_kallisto {
     executor 'local'
 
     input:
-        set val(protocol), file(kallistoResults) from KALLISTO_RESULT_SETS
+        set val(protocol), file(kallistoResults) from KALLISTO_RESULT_FILTERED
 
     output: 
         file("$protocol/chunks/*") into KALLISTO_CHUNKS
