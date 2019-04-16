@@ -215,7 +215,7 @@ process alevin_runs {
         set val(protocol), val(quantType), file('alevin') from ALEVIN_RESULTS
 
     output:
-        set val(protocol), val(quantType), file('output/*') from ALEVIN_RESULTS_BY_LIB
+        set val(protocol), val(quantType), file('output/*') into ALEVIN_RESULTS_BY_LIB
     
     """
     cp -p alevin output
