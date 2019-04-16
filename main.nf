@@ -38,7 +38,7 @@ process gather_results {
             echo alevin > quantType
             cp -rp $quantDir/alevin quantResults
         else
-            echo "cannot determine quantificaiton type from \$(pwd)" 1>&2
+            echo "cannot determine quantification type from \$(pwd)" 1>&2
             exit 1
         fi
     """
@@ -58,7 +58,7 @@ ALEVIN_RESULTS = Channel.create()
 KALLISTO_RESULTS = Channel.create()
 
 ALL_RESULTS_VALS.choice( KALLISTO_RESULTS, ALEVIN_RESULTS ) {a -> 
-    a[1] == 'kallisto' ? 1 : 0
+    a[1] == 'kallisto' ? 0 : 1
 }
     
 // Make a transcript-to-gene mapping from the GTF file
