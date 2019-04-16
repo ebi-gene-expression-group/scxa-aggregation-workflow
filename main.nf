@@ -109,7 +109,7 @@ process find_kallisto_results {
         set val(protocol), val(quantType), file('kallisto') from KALLISTO_RESULTS
 
     output:
-        set val(protocol), file("kallisto_results.txt") into KALLISTO_RESULT_SETS
+        set val(protocol), file("kallisto_results.txt") optional true into KALLISTO_RESULT_SETS
 
     """
         dir=\$(readlink kallisto)
