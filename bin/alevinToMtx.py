@@ -107,6 +107,6 @@ with gzip.open( quant_file ) as f:
     
     genes_frame = pd.DataFrame([ gene_names, gene_names]).transpose()
     genes_frame.to_csv(path_or_buf='%s/genes.tsv' % mtx_out, index=False, sep="\t", header = False)
-    
-    barcodes_frame = pd.DataFrame([ cb_names ])
-    barcodes_frame.to_csv(path_or_buf='%s/barcodes.tsv' % mtx_out, index=False, sep="\t", header = False)
+   
+    with open('%s/barcodes.tsv' % mtx_out, 'w') as f:
+        f.write("\n".join(cb_names))    
