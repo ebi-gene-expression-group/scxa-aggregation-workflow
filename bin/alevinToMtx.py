@@ -104,7 +104,9 @@ with gzip.open( quant_file ) as f:
 
     pathlib.Path(mtx_out).mkdir(parents=True, exist_ok=True)
     mmwrite('%s/matrix.mtx' % mtx_out, umi_counts.transpose()) 
-    copyfile(cb_file, '%s/barcodes.tsv' % mtx_out)
     
     genes_frame = pd.DataFrame([ gene_names, gene_names]).transpose()
     genes_frame.to_csv(path_or_buf='%s/genes.tsv' % mtx_out, index=False, sep="\t", header = False)
+    
+    barcodes_frame = pd.DataFrame([ cb_names ])
+    barcodes_frame.to_csv(path_or_buf='%s/barcodes.tsv' % mtx_out, index=False, sep="\t", header = False)
