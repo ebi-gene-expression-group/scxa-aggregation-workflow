@@ -228,7 +228,7 @@ process alevin_to_mtx {
 
     """
     runId=\$(basename \$(readlink alevin_run))
-    alevinToMtx.py --cell_prefix \$runId alevin_run counts_mtx
+    alevinToMtx.py --cell_prefix \${runId}- alevin_run counts_mtx
     """ 
 } 
     
