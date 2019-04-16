@@ -215,13 +215,13 @@ process alevin_to_mtx {
     conda "${baseDir}/envs/parse_alevin.yml"
 
     input:
-        set val(protocol), file('*') from FLATTENED_ALEVIN_RESULTS_BY_LIB
+        set val(protocol), file('alevin_run') from FLATTENED_ALEVIN_RESULTS_BY_LIB
 
     output:
         set val(protocol), file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
 
     """
-    runId=\$(ls alevin_runs)
+    runId=\$(basename \$(readlink alevin_run))
     alevinToMtx.py --cell_prefix \$runId input/\$runId counts_mtx
     """ 
 } 
