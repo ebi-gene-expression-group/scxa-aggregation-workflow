@@ -129,11 +129,11 @@ process chunk_kallisto {
         set val(protocol), file(kallistoResults) from KALLISTO_RESULT_SETS
 
     output: 
-        file("$protocol/chunks/*") into KALLISTO_CHUNKS
+        set val(protocol), file("chunks/*") into KALLISTO_CHUNKS
 
     """
-        mkdir -p $protocol/chunks
-        split -l ${params.chunkSize} ${kallistoResults} $protocol/chunks/
+        mkdir -p chunks
+        split -l ${params.chunkSize} ${kallistoResults} chunks/
     """
 
 }
@@ -141,29 +141,8 @@ process chunk_kallisto {
 // Flatten the chunk list
 
 KALLISTO_CHUNKS
-    .collect()
-    .flatten()
+    .transpose()
     .set { FLATTENED_KALLISTO_CHUNKS }
-
-// Re-associate the chunks with their protocols of origin
-
-process associate_kallisto_chunks {
-
-    executor 'local'
-    
-    input:
-        file(kallistoChunk) from FLATTENED_KALLISTO_CHUNKS
-
-    output:
-        set stdout, file("out/$kallistoChunk") into READY_KALLISTO_CHUNKS 
-
-    """
-        mkdir -p out
-        cp -p $kallistoChunk out
-        
-        readlink \$kallistoChunk | awk -F'/' '{print \$(NF-2)}' 
-    """
-}
 
 // Note: we can call tximport in different ways to create different matrix types 
 
@@ -179,7 +158,7 @@ process kallisto_gene_count_matrix {
 
     input:
         file tx2Gene from TRANSCRIPT_TO_GENE.first()
-        set val(protocol), file(kallistoChunk) from READY_KALLISTO_CHUNKS        
+        set val(protocol), file(kallistoChunk) from FLATTENED_KALLISTO_CHUNKS        
 
     output:
         set val(protocol), file("counts_mtx") into KALLISTO_CHUNK_COUNT_MATRICES
@@ -215,13 +194,18 @@ process alevin_runs {
         set val(protocol), val(quantType), file('alevin') from ALEVIN_RESULTS
 
     output:
-        set val(protocol), val(quantType), file('output/*') into ALEVIN_RESULTS_BY_LIB
+         set val(protocol), file("alevin_runs/*") into ALEVIN_RESULTS_BY_LIB
     
     """
-    cp -rp alevin output
+    cp -rp alevin alevin_runs
     """
 }
 
+// Flatten Alevin channel
+
+ALEVIN_RESULTS_BY_LIB
+    .transpose()
+    .set{FLATTENED_ALEVIN_RESULTS_BY_LIB}
 
 // Convert Alevin output to MTX. There will be one of these for every run, or
 // technical replicate group of runs
@@ -231,24 +215,24 @@ process alevin_to_mtx {
     conda "${baseDir}/envs/parse_alevin.yml"
 
     input:
-        set val(protocol), val(quantType), file('input/*') from ALEVIN_RESULTS_BY_LIB
+        set val(protocol), file('*') from FLATTENED_ALEVIN_RESULTS_BY_LIB
 
     output:
         set val(protocol), file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
 
     """
-    runId=\$(ls input)
-    alevinToMtx.py input/\$runId counts_mtx \$runId
+    runId=\$(ls alevin_runs)
+    alevinToMtx.py --cell_prefix \$runId input/\$runId counts_mtx
     """ 
 } 
-
+    
 // Merge the chunks for each protocol into one matrix. For Kallisto
 // results this will be sub-matrices generated due the costs of running
 // tximport on 10s of 1000s of runs. For Alevin this will be the matrices
 // generated for each library
 
-KALLISTO_CHUNK_COUNT_MATRICES
-    .concat(ALEVIN_CHUNK_COUNT_MATRICES)
+ALEVIN_CHUNK_COUNT_MATRICES
+    .concat(KALLISTO_CHUNK_COUNT_MATRICES)
     .groupTuple()
     .set { PROTOCOL_COUNT_CHUNKS }
 
