@@ -58,7 +58,7 @@ ALEVIN_RESULTS = Channel.create()
 KALLISTO_RESULTS = Channel.create()
 
 ALL_RESULTS_VALS.choice( KALLISTO_RESULTS, ALEVIN_RESULTS ) {a -> 
-    a[2] == 'kallisto' ? 1 : 0
+    a[1] == 'kallisto' ? 1 : 0
 }
     
 // Make a transcript-to-gene mapping from the GTF file
@@ -109,7 +109,7 @@ process find_kallisto_results {
         set val(protocol), val(quantType), file('kallisto') from KALLISTO_RESULTS
 
     output:
-        set val(protocol), file("kallisto_results.txt") optional true into KALLISTO_RESULT_SETS
+        set val(protocol), file("kallisto_results.txt") into KALLISTO_RESULT_SETS
 
     """
         dir=\$(readlink kallisto)
@@ -204,6 +204,25 @@ process kallisto_gene_count_matrix {
         """
 }
 
+// Get the run-wise Alevin results. In the case of Alevin, we'll have one
+// matrix from each library. We can just copy the symlink to the 'alevin'
+// folder that contains the library-wise Alevin runs. Nextflow will then put
+// each result set into the output channel.
+
+process alevin_runs {
+
+    input:
+        set val(protocol), val(quantType), file('alevin') from ALEVIN_RESULTS
+
+    output:
+        set val(protocol), val(quantType), file('output/*') from ALEVIN_RESULTS_BY_LIB
+    
+    """
+    cp -p alevin output
+    """
+}
+
+
 // Convert Alevin output to MTX. There will be one of these for every run, or
 // technical replicate group of runs
 
@@ -212,14 +231,14 @@ process alevin_to_mtx {
     conda "${baseDir}/envs/parse_alevin.yml"
 
     input:
-        set val(protocol), val(quantType), file('alevin') from ALEVIN_RESULTS
+        set val(protocol), val(quantType), file('input/*') from ALEVIN_RESULTS_BY_LIB
 
     output:
         set val(protocol), file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
 
     """
-    dir=\$(readlink alevin)
-    alevinToMtx.py alevin counts_mtx
+    runId=\$(ls input)
+    alevinToMtx.py input/\$runId counts_mtx $runId
     """ 
 } 
 
