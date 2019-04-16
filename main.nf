@@ -238,7 +238,7 @@ process alevin_to_mtx {
 
     """
     runId=\$(ls input)
-    alevinToMtx.py input/\$runId counts_mtx $runId
+    alevinToMtx.py input/\$runId counts_mtx \$runId
     """ 
 } 
 
