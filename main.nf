@@ -190,6 +190,8 @@ process kallisto_gene_count_matrix {
 
 process alevin_runs {
 
+    executor 'local'
+    
     input:
         set val(protocol), val(quantType), file('alevin') from ALEVIN_RESULTS
 
