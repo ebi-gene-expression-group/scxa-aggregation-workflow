@@ -4,6 +4,7 @@ resultsRoot = params.resultsRoot
 quantDir = params.quantDir
 expressionLevel = params.level
 expressionScaling = params.scaling
+minimum_p = params.minimum_p
 
 // Find results from all the quantification subdirectories
 
@@ -113,7 +114,7 @@ process filter_kallisto_results {
 
     """
         dir=\$(readlink kallisto)
-        python ${workflow.projectDir}/filter_p_alignment.py \${dir}
+        python ${workflow.projectDir}/filter_p_alignment.py \${dir ${minimum_p}}
     """
 }
 
