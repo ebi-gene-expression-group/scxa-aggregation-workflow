@@ -263,7 +263,7 @@ process merge_count_chunk_matrices {
         file("counts_mtx_${protocol}") into PROTOCOL_COUNT_MATRICES
 
     """
-        find $(pwd) -name 'counts_mtx' > dirs.txt
+        find \$(pwd) -name 'counts_mtx' > dirs.txt
         ndirs=\$(cat dirs.txt | wc -l)
         if [ "\$ndirs" -gt 1 ]; then 
             mergeMtx.R dirs.txt counts_mtx_${protocol}
@@ -295,7 +295,7 @@ process merge_protocol_count_matrices {
         file("counts_mtx.zip") into EXP_COUNT_MATRICES
 
     """
-        find $(pwd) -name 'counts_mtx_*' > dirs.txt
+        find \$(pwd) -name 'counts_mtx_*' > dirs.txt
         
         ndirs=\$(cat dirs.txt | wc -l)
         if [ "\$ndirs" -gt 1 ]; then 
