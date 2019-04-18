@@ -268,7 +268,7 @@ process merge_count_chunk_matrices {
         if [ "\$ndirs" -gt 1 ]; then 
             mergeMtx.R dirs.txt counts_mtx_${protocol}
         else
-            ln -s $(cat dirs.txt) counts_mtx_${protocol}
+            ln -s \$(cat dirs.txt) counts_mtx_${protocol}
         fi
         rm -f dirs.txt
     """
