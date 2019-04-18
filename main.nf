@@ -207,7 +207,7 @@ process alevin_runs {
 
 ALEVIN_RESULTS_BY_LIB
     .transpose()
-    .set{
+    .into{
         FLATTENED_ALEVIN_RESULTS_BY_LIB
         FLATTENED_ALEVIN_RESULTS_BY_LIB_FOR_STATS
     }
