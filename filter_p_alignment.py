@@ -13,5 +13,5 @@ with open("kallisto_results_filtered.txt","w") as outfile:
         with open(kallistofolder+"/"+runID + "/run_info.json","r") as run_info_file:
             run_info = json.load(run_info_file)
             p_alignment = run_info["p_pseudoaligned"]
-            if p_alignment > minimum_p:
+            if float(p_alignment) > float(minimum_p):
                 outfile.write(kallistofolder + "/" + runID + "/abundance.h5\n")
