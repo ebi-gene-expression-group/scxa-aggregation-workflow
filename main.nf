@@ -32,10 +32,10 @@ process gather_results {
         cp -p $quantDir/protocol protocol
 
         if [ -e $quantDir/kallisto ]; then
-            echo kallisto > quantType
+            echo -n kallisto > quantType
             cp -rp $quantDir/kallisto quantResults
         elif [ -e $quantDir/alevin ]; then
-            echo alevin > quantType
+            echo -n alevin > quantType
             cp -rp $quantDir/alevin quantResults
         else
             echo "cannot determine quantification type from \$(pwd)" 1>&2
@@ -264,7 +264,12 @@ process merge_count_chunk_matrices {
 
     """
         find . -name 'counts_mtx' > dirs.txt
-        mergeMtx.R dirs.txt counts_mtx_${protocol}
+        ndirs=\$(cat dirs.txt | wc)
+        if [ "\$ndirs" -gt 1 ]; then 
+            mergeMtx.R dirs.txt counts_mtx_${protocol}
+        else
+            ln -s $(cat dirs.txt) counts_mtx_${protocol}
+        fi
         rm -f dirs.txt
     """
 }
