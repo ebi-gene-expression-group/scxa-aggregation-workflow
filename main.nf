@@ -207,7 +207,10 @@ process alevin_runs {
 
 ALEVIN_RESULTS_BY_LIB
     .transpose()
-    .set{FLATTENED_ALEVIN_RESULTS_BY_LIB}
+    .set{
+        FLATTENED_ALEVIN_RESULTS_BY_LIB
+        FLATTENED_ALEVIN_RESULTS_BY_LIB_FOR_STATS
+    }
 
 // Convert Alevin output to MTX. There will be one of these for every run, or
 // technical replicate group of runs
@@ -231,7 +234,33 @@ process alevin_to_mtx {
     alevinToMtx.py --cell_prefix \${runId}- alevin_run counts_mtx
     """ 
 } 
+  
+// Extract the output stats for each run and store to a tsv for later collation
+ 
+process alevin_stats {
     
+    conda 'r-rjson'
+
+    input:
+        set val(protocol), file('alevin_run') from FLATTENED_ALEVIN_RESULTS_BY_LIB_FOR_STATS
+
+    output:
+        set val(protocol), file("alevin_stats.tsv") into ALEVIN_CHUNK_STATS
+
+    """
+    #!/usr/bin/env Rscript
+    
+    suppressPackageStartupMessages(library(rjson))    
+    
+    json <- fromJSON(file = "alevin_run/aux_info/alevin_meta_info.json") 
+    stats <- t(data.frame(unlist(lapply(json, function(j) paste(j, collapse = ' ')))))
+    run <- basename(Sys.readlink("alevin_run"))
+    
+    write.table(data.frame(cbind(run=run, stats)), file = 'alevin_stats.tsv', quote = FALSE, sep="\\t", row.names=FALSE)
+    """
+    
+}
+ 
 // Merge the chunks for each protocol into one matrix. For Kallisto
 // results this will be sub-matrices generated due the costs of running
 // tximport on 10s of 1000s of runs. For Alevin this will be the matrices
@@ -335,3 +364,5 @@ process merge_tpm_chunk_matrices {
 KALLISTO_CHUNK_STATS
     .collectFile( sort: true, name: "kallisto_stats.tsv", storeDir: "${resultsRoot}/matrices", keepHeader: true )
 
+ALEVIN_CHUNK_STATS
+    .collectFile( sort: true, name: "alevin_stats.tsv", storeDir: "${resultsRoot}/matrices", keepHeader: true )
