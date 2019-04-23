@@ -174,13 +174,21 @@ process kallisto_gene_count_matrix {
             txOut = 'FALSE'
         }
 
-        """
-        tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=$tx2Gene \
-            --countsFromAbundance=$expressionScaling --ignoreTxVersion=TRUE --txOut=$txOut \
-            --outputCountsFile=counts_mtx/matrix.mtx \
-            --outputAbundancesFile=tpm_mtx/matrix.mtx \
-            --outputStatsFile=kallisto_stats.tsv
-        """
+        script:
+
+            ignoreTxVersion = 'TRUE'
+
+            if ( params.reference.containsKey('ignoreTxVersion') ){
+                ignoreTxVersion = params.reference.ignoreTxVersion
+            }
+
+            """
+            tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=$tx2Gene \
+                --countsFromAbundance=$expressionScaling --ignoreTxVersion=$ignoreTxVersion --txOut=$txOut \
+                --outputCountsFile=counts_mtx/matrix.mtx \
+                --outputAbundancesFile=tpm_mtx/matrix.mtx \
+                --outputStatsFile=kallisto_stats.tsv
+            """
 }
 
 // Get the run-wise Alevin results. In the case of Alevin, we'll have one
