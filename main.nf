@@ -207,7 +207,7 @@ process alevin_runs {
          set val(protocol), file("alevin_runs/*") into ALEVIN_RESULTS_BY_LIB
     
     """
-    cp -rp alevin alevin_runs
+    cp -P alevin alevin_runs
     """
 }
 
@@ -220,8 +220,7 @@ ALEVIN_RESULTS_BY_LIB
         FLATTENED_ALEVIN_RESULTS_BY_LIB_FOR_STATS
     }
 
-// Convert Alevin output to MTX. There will be one of these for every run, or
-// technical replicate group of runs
+// Retrieve the MTX-format results that should be in the Alevin dir 
 
 process alevin_to_mtx {
 
@@ -239,33 +238,10 @@ process alevin_to_mtx {
 
     """
     runId=\$(basename \$(readlink alevin_run))
-    alevinToMtx.py --cell_prefix \${runId}- alevin_run counts_mtx
+    ln -s alevin_run/counts_mtx_nonempty/alevin/mtx counts_mtx
     """ 
 }
 
-// Remove empty droplets from Alevin results
-
-process remove_empty_drops {
-    
-    conda "${baseDir}/envs/empty_drops.yml"
-
-    memory { 10.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
-    maxRetries 20
-   
-    input:
-        set val(protocol), file(countsMtx) from ALEVIN_CHUNK_COUNT_MATRICES_NONEMPTY 
-
-    output:
-        set val(protocol), file()
-
-    """
-
-    """
-}
-
-// Remove empty drops  
-  
 // Extract the output stats for each run and store to a tsv for later collation
  
 process alevin_stats {
