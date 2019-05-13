@@ -241,7 +241,30 @@ process alevin_to_mtx {
     runId=\$(basename \$(readlink alevin_run))
     alevinToMtx.py --cell_prefix \${runId}- alevin_run counts_mtx
     """ 
-} 
+}
+
+// Remove empty droplets from Alevin results
+
+process remove_empty_drops {
+    
+    conda "${baseDir}/envs/empty_drops.yml"
+
+    memory { 10.GB * task.attempt }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
+    maxRetries 20
+   
+    input:
+        set val(protocol), file(countsMtx) from ALEVIN_CHUNK_COUNT_MATRICES_NONEMPTY 
+
+    output:
+        set val(protocol), file()
+
+    """
+
+    """
+}
+
+// Remove empty drops  
   
 // Extract the output stats for each run and store to a tsv for later collation
  
@@ -274,7 +297,7 @@ process alevin_stats {
 // tximport on 10s of 1000s of runs. For Alevin this will be the matrices
 // generated for each library
 
-ALEVIN_CHUNK_COUNT_MATRICES
+ALEVIN_CHUNK_COUNT_MATRICES_NONEMPTY
     .concat(KALLISTO_CHUNK_COUNT_MATRICES)
     .groupTuple()
     .set { PROTOCOL_COUNT_CHUNKS }
