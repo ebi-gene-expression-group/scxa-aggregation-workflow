@@ -273,7 +273,7 @@ process alevin_stats {
 // tximport on 10s of 1000s of runs. For Alevin this will be the matrices
 // generated for each library
 
-ALEVIN_CHUNK_COUNT_MATRICES_NONEMPTY
+ALEVIN_CHUNK_COUNT_MATRICES
     .concat(KALLISTO_CHUNK_COUNT_MATRICES)
     .groupTuple()
     .set { PROTOCOL_COUNT_CHUNKS }
