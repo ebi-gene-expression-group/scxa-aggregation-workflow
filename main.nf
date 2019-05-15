@@ -237,8 +237,7 @@ process alevin_to_mtx {
         set val(protocol), file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
 
     """
-    runId=\$(basename \$(readlink alevin_run))
-    ln -s alevin_run/counts_mtx_nonempty/alevin/mtx counts_mtx
+    ln -s ln -s alevin_run/alevin/mtx/counts_mtx_nonempty counts_mtx counts_mtx
     """ 
 }
 
