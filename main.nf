@@ -176,14 +176,9 @@ process kallisto_gene_count_matrix {
 
         script:
 
-            // This should be TRUE by default based on the config for this
-            // repo, can be overridden by configs on the command line
-
-            ignoreTxVersion = params.reference.ignoreTxVersion
-
             """
             tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=$tx2Gene \
-                --countsFromAbundance=$expressionScaling --ignoreTxVersion=$ignoreTxVersion --txOut=$txOut \
+                --countsFromAbundance=$expressionScaling --ignoreTxVersion=${params.reference.ignoreTxVersion} --txOut=$txOut \
                 --outputCountsFile=counts_mtx/matrix.mtx \
                 --outputAbundancesFile=tpm_mtx/matrix.mtx \
                 --outputStatsFile=kallisto_stats.tsv
