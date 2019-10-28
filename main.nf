@@ -176,11 +176,10 @@ process kallisto_gene_count_matrix {
 
         script:
 
-            ignoreTxVersion = 'TRUE'
+            // This should be TRUE by default based on the config for this
+            // repo, can be overridden by configs on the command line
 
-            if ( params.containsKey('reference') && params.reference.containsKey('ignoreTxVersion') ){
-                ignoreTxVersion = params.reference.ignoreTxVersion
-            }
+            ignoreTxVersion = params.reference.ignoreTxVersion
 
             """
             tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=$tx2Gene \
