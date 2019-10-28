@@ -178,7 +178,7 @@ process kallisto_gene_count_matrix {
 
             ignoreTxVersion = 'TRUE'
 
-            if ( params.reference.containsKey('ignoreTxVersion') ){
+            if ( params.containsKey('reference') && params.reference.containsKey('ignoreTxVersion') ){
                 ignoreTxVersion = params.reference.ignoreTxVersion
             }
 
