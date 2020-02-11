@@ -12,8 +12,8 @@ Channel
     .set { QUANT_DIRS }
 
 Channel
-    .fromPath("$quantDir/*/*.gtf.gz", checkIfExists: true )
-    .set { REFERENCE_GTFS }
+    .fromPath("$quantDir/*/transcript_to_gene.txt", checkIfExists: true )
+    .set { TRANSCRIPT_TO_GENE_MANY }
 
 // Look at the results dirs and work out what quantification methods and
 // protocols have been used
@@ -61,27 +61,6 @@ ALL_RESULTS_VALS.choice( KALLISTO_RESULTS, ALEVIN_RESULTS ) {a ->
     a[1] == 'kallisto' ? 0 : 1
 }
     
-// Make a transcript-to-gene mapping from the GTF file
-
-process transcript_to_gene {
-
-    conda "${baseDir}/envs/bioconductor-rtracklayer.yml"
-    
-    cache 'lenient'
-
-    memory { 5.GB * task.attempt }
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
-    
-    input:
-        file gtf from REFERENCE_GTFS
-    output:
-        file tx2gene into TRANSCRIPT_TO_GENE_MANY
-
-    """
-        transcriptToGene.R ${gtf} transcript_id gene_id tx2gene
-    """
-}
-
 // Allowing for the possibility of multiple sub-experiment2 in future,
 // so creating a joint GTF. But there's probably only 1....
 
