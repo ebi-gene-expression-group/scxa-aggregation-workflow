@@ -156,7 +156,7 @@ process kallisto_gene_count_matrix {
         script:
 
             """
-            sed -e 's/\t/,/g' ${tx2gene} > ${tx2gene}.csv
+            sed -e 's/\t/,/g' ${tx2Gene} > ${tx2Gene}.csv
             tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=${tx2Gene}.csv \
                 --countsFromAbundance=$expressionScaling --ignoreTxVersion=${params.reference.ignoreTxVersion} --txOut=$txOut \
                 --outputCountsFile=counts_mtx/matrix.mtx \
