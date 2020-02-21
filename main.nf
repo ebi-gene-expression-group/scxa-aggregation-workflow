@@ -156,9 +156,22 @@ process kallisto_gene_count_matrix {
         script:
 
             """
+            # Some transcripts have identifiers that look annoyingly like versions 
+
+            ignoreTxVersion=${params.reference.ignoreTxVersion}
+            example_file=\$(head -n 1 ${kallistoChunk})
+            example_id=\$(sed '2q;d'  \${example_file/\\.h5/.tsv} | awk '{print \$1}')
+            grep -P "^\$example_id\t" tx2gene > /dev/null
+
+            # If the full identifier matches, then we shouldn't try to ignore a version
+
+            if [ \$? -eq 0 ]; then
+                ignoreTxVersion=FALSE
+            fi
+
             sed -e 's/\t/,/g' ${tx2Gene} > ${tx2Gene}.csv
             tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=${tx2Gene}.csv \
-                --countsFromAbundance=$expressionScaling --ignoreTxVersion=${params.reference.ignoreTxVersion} --txOut=$txOut \
+                --countsFromAbundance=$expressionScaling --ignoreTxVersion=\$ignoreTxVersion --txOut=$txOut \
                 --outputCountsFile=counts_mtx/matrix.mtx \
                 --outputAbundancesFile=tpm_mtx/matrix.mtx \
                 --outputStatsFile=kallisto_stats.tsv
