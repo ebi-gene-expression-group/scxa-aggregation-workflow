@@ -213,9 +213,8 @@ process alevin_to_mtx {
 
     conda "${baseDir}/envs/parse_alevin.yml"
     
-    memory { 10.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
-    maxRetries 20
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.exitStatus == 141 ? 'retry' : 'finish' }
+    maxRetries 10
 
     input:
         set val(protocol), file('alevin_run') from FLATTENED_ALEVIN_RESULTS_BY_LIB
