@@ -12,8 +12,8 @@ Channel
     .set { QUANT_DIRS }
 
 Channel
-    .fromPath("$quantDir/*/*.gtf.gz", checkIfExists: true )
-    .set { REFERENCE_GTFS }
+    .fromPath("$quantDir/*/transcript_to_gene.txt", checkIfExists: true )
+    .set { TRANSCRIPT_TO_GENE_MANY }
 
 // Look at the results dirs and work out what quantification methods and
 // protocols have been used
@@ -61,27 +61,6 @@ ALL_RESULTS_VALS.choice( KALLISTO_RESULTS, ALEVIN_RESULTS ) {a ->
     a[1] == 'kallisto' ? 0 : 1
 }
     
-// Make a transcript-to-gene mapping from the GTF file
-
-process transcript_to_gene {
-
-    conda "${baseDir}/envs/bioconductor-rtracklayer.yml"
-    
-    cache 'lenient'
-
-    memory { 5.GB * task.attempt }
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' } 
-    
-    input:
-        file gtf from REFERENCE_GTFS
-    output:
-        file tx2gene into TRANSCRIPT_TO_GENE_MANY
-
-    """
-        transcriptToGene.R ${gtf} transcript_id gene_id tx2gene
-    """
-}
-
 // Allowing for the possibility of multiple sub-experiment2 in future,
 // so creating a joint GTF. But there's probably only 1....
 
@@ -177,8 +156,22 @@ process kallisto_gene_count_matrix {
         script:
 
             """
-            tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=$tx2Gene \
-                --countsFromAbundance=$expressionScaling --ignoreTxVersion=${params.reference.ignoreTxVersion} --txOut=$txOut \
+            # Some transcripts have identifiers that look annoyingly like versions 
+
+            ignoreTxVersion=${params.reference.ignoreTxVersion}
+            example_file=\$(head -n 1 ${kallistoChunk})
+            example_id=\$(sed '2q;d'  \${example_file/\\.h5/.tsv} | awk '{print \$1}')
+            grep -P "^\$example_id\t" tx2gene > /dev/null
+
+            # If the full identifier matches, then we shouldn't try to ignore a version
+
+            if [ \$? -eq 0 ]; then
+                ignoreTxVersion=FALSE
+            fi
+
+            sed -e 's/\t/,/g' ${tx2Gene} > ${tx2Gene}.csv
+            tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=${tx2Gene}.csv \
+                --countsFromAbundance=$expressionScaling --ignoreTxVersion=\$ignoreTxVersion --txOut=$txOut \
                 --outputCountsFile=counts_mtx/matrix.mtx \
                 --outputAbundancesFile=tpm_mtx/matrix.mtx \
                 --outputStatsFile=kallisto_stats.tsv
@@ -220,9 +213,8 @@ process alevin_to_mtx {
 
     conda "${baseDir}/envs/parse_alevin.yml"
     
-    memory { 10.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
-    maxRetries 20
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.exitStatus == 141 ? 'retry' : 'finish' }
+    maxRetries 10
 
     input:
         set val(protocol), file('alevin_run') from FLATTENED_ALEVIN_RESULTS_BY_LIB
