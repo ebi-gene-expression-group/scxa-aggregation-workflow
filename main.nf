@@ -244,7 +244,7 @@ process alevin_stats {
     
     suppressPackageStartupMessages(library(rjson))    
     
-    json <- fromJSON(file = "alevin_run/quant.json") 
+    json <- fromJSON(file = "alevin_run/meta_info.json") 
     stats <- t(data.frame(unlist(lapply(json, function(j) paste(j, collapse = ' ')))))
     run <- basename(Sys.readlink("alevin_run"))
     
