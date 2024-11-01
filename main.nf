@@ -1,76 +1,48 @@
 #!/usr/bin/env nextflow
 
-resultsRoot = params.resultsRoot
-quantDir = params.quantDir
-expressionLevel = params.level
-expressionScaling = params.scaling
+nextflow.enable.dsl=2
 
-// Find results from all the quantification subdirectories
+params.resultsRoot = ''
+params.quantDir = ''
+params.level = ''
+params.scaling = ''
+params.chunkSize = ''
+params.reference = [ignoreTxVersion: '']
 
-Channel
-    .fromPath("$quantDir/*", type: 'dir')
-    .set { QUANT_DIRS }
-
-Channel
-    .fromPath("$quantDir/*/transcript_to_gene.txt", checkIfExists: true )
-    .set { TRANSCRIPT_TO_GENE_MANY }
-
-// Look at the results dirs and work out what quantification methods and
-// protocols have been used
+// Process definitions
 
 process gather_results {
-    
     executor 'local'
     
     input:
-        file(quantDir) from QUANT_DIRS
+    path quantDir
 
     output:
-        set file('protocol'), file('quantType'), file('quantResults') into ALL_RESULTS
+    tuple path('protocol'), path('quantType'), path('quantResults')
 
+    script:
     """
-        cp -p $quantDir/protocol protocol
+    cp -p $quantDir/protocol protocol
 
-        if [ -e $quantDir/kallisto ]; then
-            echo -n kallisto > quantType
-            cp -rp $quantDir/kallisto quantResults
-        elif [ -e $quantDir/alevin ]; then
-            echo -n alevin > quantType
-            cp -rp $quantDir/alevin quantResults
-        else
-            echo "cannot determine quantification type from \$(pwd)" 1>&2
-            exit 1
-        fi
+    if [ -e $quantDir/kallisto ]; then
+        echo -n kallisto > quantType
+        cp -rp $quantDir/kallisto quantResults
+    elif [ -e $quantDir/alevin ]; then
+        echo -n alevin > quantType
+        cp -rp $quantDir/alevin quantResults
+    else
+        echo "cannot determine quantification type from \$(pwd)" 1>&2
+        exit 1
+    fi
     """
-
 }
-
-// Convert file outputs to strings
-
-ALL_RESULTS
-    .map{ row-> tuple( row[0].text, row[1].text, row[2]) }        
-    .set{ ALL_RESULTS_VALS }
-
-
-// Move Kallisto and Alevin results to different channels
-
-ALEVIN_RESULTS = Channel.create()
-KALLISTO_RESULTS = Channel.create()
-
-ALL_RESULTS_VALS.choice( KALLISTO_RESULTS, ALEVIN_RESULTS ) {a -> 
-    a[1] == 'kallisto' ? 0 : 1
-}
-    
-// Allowing for the possibility of multiple sub-experiment2 in future,
-// so creating a joint GTF. But there's probably only 1....
 
 process merge_transcript_to_gene {
-
     input:
-        file('??/tx2gene') from TRANSCRIPT_TO_GENE_MANY
+    path('??/tx2gene')
 
     output:
-        file tx2gene into TRANSCRIPT_TO_GENE
+    path 'tx2gene'
 
     """
     cat \$(ls */tx2gene | head -n 1) | head -n 1 > tx2gene
@@ -78,55 +50,39 @@ process merge_transcript_to_gene {
     """    
 }
 
-// Generate the sets of files for each Kallisto sub-directory
-
 process find_kallisto_results {
-    
     executor 'local'
     
     input:
-        set val(protocol), val(quantType), file('kallisto') from KALLISTO_RESULTS
+    tuple val(protocol), val(quantType), path('kallisto')
 
     output:
-        set val(protocol), file("kallisto_results.txt") into KALLISTO_RESULT_SETS
+    tuple val(protocol), path("kallisto_results.txt")
 
     """
-        dir=\$(readlink kallisto)
-        ls kallisto/*/abundance.h5 | while read -r l; do
-            echo \$(dirname \${dir})/\$l >> kallisto_results.txt
-        done
+    dir=\$(readlink kallisto)
+    ls kallisto/*/abundance.h5 | while read -r l; do
+        echo \$(dirname \${dir})/\$l >> kallisto_results.txt
+    done
     """
 }
 
-// Split each result set into smaller chunks
-
 process chunk_kallisto {
-
     executor 'local'
 
     input:
-        set val(protocol), file(kallistoResults) from KALLISTO_RESULT_SETS
+    tuple val(protocol), path(kallistoResults)
 
     output: 
-        set val(protocol), file("chunks/*") into KALLISTO_CHUNKS
+    tuple val(protocol), path("chunks/*")
 
     """
-        mkdir -p chunks
-        split -l ${params.chunkSize} ${kallistoResults} chunks/
+    mkdir -p chunks
+    split -l ${params.chunkSize} ${kallistoResults} chunks/
     """
-
 }
 
-// Flatten the chunk list
-
-KALLISTO_CHUNKS
-    .transpose()
-    .set { FLATTENED_KALLISTO_CHUNKS }
-
-// Note: we can call tximport in different ways to create different matrix types 
-
 process kallisto_gene_count_matrix {
-    
     conda "${baseDir}/envs/kallisto_matrix.yml"
 
     cache 'deep'
@@ -136,108 +92,74 @@ process kallisto_gene_count_matrix {
     maxRetries 20
 
     input:
-        file tx2Gene from TRANSCRIPT_TO_GENE.first()
-        set val(protocol), file(kallistoChunk) from FLATTENED_KALLISTO_CHUNKS        
+    path tx2Gene
+    tuple val(protocol), path(kallistoChunk)        
 
     output:
-        set val(protocol), file("counts_mtx") into KALLISTO_CHUNK_COUNT_MATRICES
-        set val(protocol), file("tpm_mtx") into KALLISTO_CHUNK_ABUNDANCE_MATRICES
-        file("kallisto_stats.tsv") into KALLISTO_CHUNK_STATS
+    tuple val(protocol), path("counts_mtx"), emit: counts
+    tuple val(protocol), path("tpm_mtx"), emit: tpm
+    path "kallisto_stats.tsv", emit: stats
 
     script:
+    def txOut = (params.level == 'transcript') ? 'TRUE' : 'FALSE'
+    """
+    ignoreTxVersion=${params.reference.ignoreTxVersion}
+    example_file=\$(head -n 1 ${kallistoChunk})
+    example_id=\$(sed '2q;d'  \${example_file/\\.h5/.tsv} | awk '{print \$1}')
+    grep -P "^\$example_id\t" tx2gene > /dev/null
 
-        def txOut
-        if ( expressionLevel == 'transcript' ){
-            txOut = 'TRUE'
-        }else{
-            txOut = 'FALSE'
-        }
+    if [ \$? -eq 0 ]; then
+        ignoreTxVersion=FALSE
+    fi
 
-        script:
-
-            """
-            # Some transcripts have identifiers that look annoyingly like versions 
-
-            ignoreTxVersion=${params.reference.ignoreTxVersion}
-            example_file=\$(head -n 1 ${kallistoChunk})
-            example_id=\$(sed '2q;d'  \${example_file/\\.h5/.tsv} | awk '{print \$1}')
-            grep -P "^\$example_id\t" tx2gene > /dev/null
-
-            # If the full identifier matches, then we shouldn't try to ignore a version
-
-            if [ \$? -eq 0 ]; then
-                ignoreTxVersion=FALSE
-            fi
-
-            sed -e 's/\t/,/g' ${tx2Gene} > ${tx2Gene}.csv
-            tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=${tx2Gene}.csv \
-                --countsFromAbundance=$expressionScaling --ignoreTxVersion=\$ignoreTxVersion --txOut=$txOut \
-                --outputCountsFile=counts_mtx/matrix.mtx \
-                --outputAbundancesFile=tpm_mtx/matrix.mtx \
-                --outputStatsFile=kallisto_stats.tsv
-            """
+    sed -e 's/\t/,/g' ${tx2Gene} > ${tx2Gene}.csv
+    tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=${tx2Gene}.csv \
+        --countsFromAbundance=${params.scaling} --ignoreTxVersion=\$ignoreTxVersion --txOut=$txOut \
+        --outputCountsFile=counts_mtx/matrix.mtx \
+        --outputAbundancesFile=tpm_mtx/matrix.mtx \
+        --outputStatsFile=kallisto_stats.tsv
+    """
 }
 
-// Get the run-wise Alevin results. In the case of Alevin, we'll have one
-// matrix from each library. We can just copy the symlink to the 'alevin'
-// folder that contains the library-wise Alevin runs. Nextflow will then put
-// each result set into the output channel.
-
 process alevin_runs {
-
     executor 'local'
     
     input:
-        set val(protocol), val(quantType), file('alevin') from ALEVIN_RESULTS
+    tuple val(protocol), val(quantType), path('alevin')
 
     output:
-         set val(protocol), file("alevin_runs/*") into ALEVIN_RESULTS_BY_LIB
+    tuple val(protocol), path("alevin_runs/*")
     
     """
     cp -P alevin alevin_runs
     """
 }
 
-// Flatten Alevin channel
-
-ALEVIN_RESULTS_BY_LIB
-    .transpose()
-    .into{
-        FLATTENED_ALEVIN_RESULTS_BY_LIB
-        FLATTENED_ALEVIN_RESULTS_BY_LIB_FOR_STATS
-    }
-
-// Retrieve the MTX-format results that should be in the Alevin dir 
-
 process alevin_to_mtx {
-
     conda "${baseDir}/envs/parse_alevin.yml"
     
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.exitStatus == 141 ? 'retry' : 'finish' }
     maxRetries 10
 
     input:
-        set val(protocol), file('alevin_run') from FLATTENED_ALEVIN_RESULTS_BY_LIB
+    tuple val(protocol), path('alevin_run')
 
     output:
-        set val(protocol), file("counts_mtx") into ALEVIN_CHUNK_COUNT_MATRICES
+    tuple val(protocol), path("counts_mtx")
 
     """
     ln -s alevin_run/alevin/mtx/counts_mtx_nonempty counts_mtx
     """ 
 }
 
-// Extract the output stats for each run and store to a tsv for later collation
- 
 process alevin_stats {
-    
     conda 'r-rjson'
 
     input:
-        set val(protocol), file('alevin_run') from FLATTENED_ALEVIN_RESULTS_BY_LIB_FOR_STATS
+    tuple val(protocol), path('alevin_run')
 
     output:
-        set val(protocol), file("alevin_stats.tsv") into ALEVIN_CHUNK_STATS
+    tuple val(protocol), path("alevin_stats.tsv")
 
     """
     #!/usr/bin/env Rscript
@@ -250,25 +172,9 @@ process alevin_stats {
     
     write.table(data.frame(cbind(run=run, stats)), file = 'alevin_stats.tsv', quote = FALSE, sep="\\t", row.names=FALSE)
     """
-    
 }
- 
-// Merge the chunks for each protocol into one matrix. For Kallisto
-// results this will be sub-matrices generated due the costs of running
-// tximport on 10s of 1000s of runs. For Alevin this will be the matrices
-// generated for each library
-
-ALEVIN_CHUNK_COUNT_MATRICES
-    .concat(KALLISTO_CHUNK_COUNT_MATRICES)
-    .groupTuple()
-    .set { PROTOCOL_COUNT_CHUNKS }
-
-KALLISTO_CHUNK_ABUNDANCE_MATRICES
-    .groupTuple()
-    .set { PROTOCOL_KALLISTO_ABUNDANCE_CHUNKS }
 
 process merge_count_chunk_matrices {
-    
     conda "${baseDir}/envs/kallisto_matrix.yml"
 
     cache 'lenient'
@@ -278,27 +184,24 @@ process merge_count_chunk_matrices {
     maxRetries 20
     
     input:
-        set val(protocol), file('dir??/*') from PROTOCOL_COUNT_CHUNKS
+    tuple val(protocol), path('dir??/*')
 
     output:
-        file("counts_mtx_${protocol}") into PROTOCOL_COUNT_MATRICES
+    path "counts_mtx_${protocol}"
 
     """
-        find \$(pwd) -name 'counts_mtx' > dirs.txt
-        ndirs=\$(cat dirs.txt | wc -l)
-        if [ "\$ndirs" -gt 1 ]; then 
-            mergeMtx.R dirs.txt counts_mtx_${protocol}
-        else
-            ln -s \$(cat dirs.txt) counts_mtx_${protocol}
-        fi
-        rm -f dirs.txt
+    find \$(pwd) -name 'counts_mtx' > dirs.txt
+    ndirs=\$(cat dirs.txt | wc -l)
+    if [ "\$ndirs" -gt 1 ]; then 
+        mergeMtx.R dirs.txt counts_mtx_${protocol}
+    else
+        ln -s \$(cat dirs.txt) counts_mtx_${protocol}
+    fi
+    rm -f dirs.txt
     """
 }
 
-// Merge the sub-experiments corresponding to different protocols
-
 process merge_protocol_count_matrices {
-    
     conda "${baseDir}/envs/kallisto_matrix.yml"
 
     cache 'lenient'
@@ -307,54 +210,94 @@ process merge_protocol_count_matrices {
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
     
-    publishDir "$resultsRoot/matrices", mode: 'copy', overwrite: true
+    publishDir "${params.resultsRoot}/matrices", mode: 'copy', overwrite: true
     
     input:
-        file('*') from PROTOCOL_COUNT_MATRICES.collect()
+    path '*'
 
     output:
-        file("counts_mtx.zip") into EXP_COUNT_MATRICES
+    path "counts_mtx.zip"
 
     """
-        find \$(pwd) -name 'counts_mtx_*' > dirs.txt
-        
-        ndirs=\$(cat dirs.txt | wc -l)
-        if [ "\$ndirs" -gt 1 ]; then 
-            mergeMtx.R dirs.txt counts_mtx
-        else
-            ln -s \$(cat dirs.txt) counts_mtx
-        fi
-        rm -f dirs.txt
-        zip -r counts_mtx.zip counts_mtx
+    find \$(pwd) -name 'counts_mtx_*' > dirs.txt
+    
+    ndirs=\$(cat dirs.txt | wc -l)
+    if [ "\$ndirs" -gt 1 ]; then 
+        mergeMtx.R dirs.txt counts_mtx
+    else
+        ln -s \$(cat dirs.txt) counts_mtx
+    fi
+    rm -f dirs.txt
+    zip -r counts_mtx.zip counts_mtx
     """
 }
 
 process merge_tpm_chunk_matrices {
-
     conda "${baseDir}/envs/kallisto_matrix.yml"
     
     memory { 5.GB * task.attempt }
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
     maxRetries 20
     
-    publishDir "$resultsRoot/matrices", mode: 'copy', overwrite: true
+    publishDir "${params.resultsRoot}/matrices", mode: 'copy', overwrite: true
     
     input:
-        set val(protocol), file('dir??/*') from PROTOCOL_KALLISTO_ABUNDANCE_CHUNKS
+    tuple val(protocol), path('dir??/*')
 
     output:
-        set val(protocol), file("tpm_mtx.zip")
+    tuple val(protocol), path("tpm_mtx.zip")
 
     """
-        find . -name 'tpm_mtx' > dirs.txt
-        mergeMtx.R dirs.txt tpm_mtx
-        rm -f dirs.txt
-        zip -r tpm_mtx.zip tpm_mtx
+    find . -name 'tpm_mtx' > dirs.txt
+    mergeMtx.R dirs.txt tpm_mtx
+    rm -f dirs.txt
+    zip -r tpm_mtx.zip tpm_mtx
     """
 }
 
-KALLISTO_CHUNK_STATS
-    .collectFile( sort: true, name: "kallisto_stats.tsv", storeDir: "${resultsRoot}/matrices", keepHeader: true )
+// Workflow definition
 
-ALEVIN_CHUNK_STATS
-    .collectFile( sort: true, name: "alevin_stats.tsv", storeDir: "${resultsRoot}/matrices", keepHeader: true )
+workflow {
+    // Input channels
+    quant_dirs_ch = Channel.fromPath("${params.quantDir}/*", type: 'dir')
+    transcript_to_gene_ch = Channel.fromPath("${params.quantDir}/*/transcript_to_gene.txt", checkIfExists: true)
+
+    // Process execution
+    gather_results(quant_dirs_ch)
+    merge_transcript_to_gene(transcript_to_gene_ch.collect())
+
+    // Split results into Kallisto and Alevin
+    gather_results.out
+        .map { it -> [it[0].text, it[1].text, it[2]] }
+        .branch {
+            kallisto: it[1] == 'kallisto'
+            alevin: it[1] == 'alevin'
+        }
+        .set { all_results }
+
+    // Kallisto workflow
+    find_kallisto_results(all_results.kallisto)
+    chunk_kallisto(find_kallisto_results.out)
+    kallisto_gene_count_matrix(merge_transcript_to_gene.out, chunk_kallisto.out.transpose())
+
+    // Alevin workflow
+    alevin_runs(all_results.alevin)
+    alevin_to_mtx(alevin_runs.out.transpose())
+    alevin_stats(alevin_runs.out.transpose())
+
+    // Merge count matrices
+    merge_count_chunk_matrices(
+        kallisto_gene_count_matrix.out.counts.mix(alevin_to_mtx.out).groupTuple()
+    )
+    merge_protocol_count_matrices(merge_count_chunk_matrices.out.collect())
+
+    // Merge TPM matrices (Kallisto only)
+    merge_tpm_chunk_matrices(kallisto_gene_count_matrix.out.tpm.groupTuple())
+
+    // Collect stats
+    kallisto_gene_count_matrix.out.stats
+        .collectFile(name: "kallisto_stats.tsv", storeDir: "${params.resultsRoot}/matrices", keepHeader: true)
+    
+    alevin_stats.out
+        .collectFile(name: "alevin_stats.tsv", storeDir: "${params.resultsRoot}/matrices", keepHeader: true)
+}
