@@ -92,7 +92,7 @@ process find_kallisto_results {
 
     """
         dir=\$(readlink kallisto)
-        ls kallisto/*/abundance.h5 | while read -r l; do
+        find -L kallisto -type f -name 'abundance.h5' | while read -r l; do
             echo \$(dirname \${dir})/\$l >> kallisto_results.txt
         done
     """
