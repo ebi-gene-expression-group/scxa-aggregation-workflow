@@ -16,6 +16,10 @@ class WorkflowParamValidator {
         requireNestedEnum(params.reference, 'params.reference', 'ignoreTxVersion', BOOLEAN_STRINGS)
     }
 
+    static String shellQuote(value) {
+        "'" + value.toString().replace("'", "'\"'\"'") + "'"
+    }
+
     private static void requirePath(def params, String name) {
         requireValue(params, "params.${name}", name)
         assertPattern(params.get(name), "params.${name}", PATH_VALUE)

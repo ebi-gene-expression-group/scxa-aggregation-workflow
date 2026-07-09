@@ -113,8 +113,10 @@ process chunk_kallisto {
         set val(protocol), file("chunks/*") into KALLISTO_CHUNKS
 
     """
+        CHUNK_SIZE=${WorkflowParamValidator.shellQuote(params.chunkSize)}
+        KALLISTO_RESULTS=${WorkflowParamValidator.shellQuote(kallistoResults)}
         mkdir -p chunks
-        split -l ${params.chunkSize} ${kallistoResults} chunks/
+        split -l "\$CHUNK_SIZE" "\$KALLISTO_RESULTS" chunks/
     """
 
 }
@@ -160,8 +162,14 @@ process kallisto_gene_count_matrix {
             """
             # Some transcripts have identifiers that look annoyingly like versions 
 
-            ignoreTxVersion=${params.reference.ignoreTxVersion}
-            example_file=\$(head -n 1 ${kallistoChunk})
+            IGNORE_TX_VERSION=${WorkflowParamValidator.shellQuote(params.reference.ignoreTxVersion)}
+            KALLISTO_CHUNK=${WorkflowParamValidator.shellQuote(kallistoChunk)}
+            TX2_GENE=${WorkflowParamValidator.shellQuote(tx2Gene)}
+            EXPRESSION_SCALING=${WorkflowParamValidator.shellQuote(expressionScaling)}
+            TX_OUT=${WorkflowParamValidator.shellQuote(txOut)}
+
+            ignoreTxVersion="\$IGNORE_TX_VERSION"
+            example_file=\$(head -n 1 "\$KALLISTO_CHUNK")
             example_id=\$(sed '2q;d'  \${example_file/\\.h5/.tsv} | awk '{print \$1}')
             grep -P "^\$example_id\t" tx2gene > /dev/null
 
@@ -171,9 +179,9 @@ process kallisto_gene_count_matrix {
                 ignoreTxVersion=FALSE
             fi
 
-            sed -e 's/\t/,/g' ${tx2Gene} > ${tx2Gene}.csv
-            tximport.R --files=${kallistoChunk} --type=kallisto --tx2gene=${tx2Gene}.csv \
-                --countsFromAbundance=$expressionScaling --ignoreTxVersion=\$ignoreTxVersion --txOut=$txOut \
+            sed -e 's/\t/,/g' "\$TX2_GENE" > "\${TX2_GENE}.csv"
+            tximport.R --files="\$KALLISTO_CHUNK" --type=kallisto --tx2gene="\${TX2_GENE}.csv" \
+                --countsFromAbundance="\$EXPRESSION_SCALING" --ignoreTxVersion="\$ignoreTxVersion" --txOut="\$TX_OUT" \
                 --outputCountsFile=counts_mtx/matrix.mtx \
                 --outputAbundancesFile=tpm_mtx/matrix.mtx \
                 --outputStatsFile=kallisto_stats.tsv
