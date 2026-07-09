@@ -1,5 +1,7 @@
 #!/usr/bin/env nextflow
 
+WorkflowParamValidator.validate(params)
+
 resultsRoot = params.resultsRoot
 quantDir = params.quantDir
 expressionLevel = params.level
