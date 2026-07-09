@@ -25,20 +25,20 @@ process gather_results {
     executor 'local'
     
     input:
-        file(quantDir) from QUANT_DIRS
+        file('quant_dir') from QUANT_DIRS
 
     output:
         set file('protocol'), file('quantType'), file('quantResults') into ALL_RESULTS
 
     """
-        cp -p $quantDir/protocol protocol
+        cp -p quant_dir/protocol protocol
 
-        if [ -e $quantDir/kallisto ]; then
+        if [ -e quant_dir/kallisto ]; then
             echo -n kallisto > quantType
-            cp -rp $quantDir/kallisto quantResults
-        elif [ -e $quantDir/alevin ]; then
+            cp -rp quant_dir/kallisto quantResults
+        elif [ -e quant_dir/alevin ]; then
             echo -n alevin > quantType
-            cp -rp $quantDir/alevin quantResults
+            cp -rp quant_dir/alevin quantResults
         else
             echo "cannot determine quantification type from \$(pwd)" 1>&2
             exit 1
